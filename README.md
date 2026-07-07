@@ -59,6 +59,18 @@ Instead of manually reading piping drawings and preparing MTO sheets, users can 
                  Structured JSON Response
                                |
                                v
+                               API Key Available?
+                              |
+                        +--------+--------+
+                        |                 |
+                        Yes                No
+                        |                 |
+                        v                 v
+                  Gemini Vision      Mock Pipeline
+                        |                 |
+                        +--------+--------+
+                              |
+                              v
                 Pydantic Schema Validation
                                |
                                v
@@ -193,6 +205,7 @@ Install dependencies
 
 ```bash
 pip install -r requirements.txt
+copy .env.example .env
 ```
 
 Run backend
@@ -244,9 +257,12 @@ Backend requires a `.env` file.
 Example:
 
 ```env
-GEMINI_API_KEY=your_google_ai_api_key
-
+# Backend
+GEMINI_API_KEY=
 GEMINI_MODEL=gemini-2.5-flash
+
+# Frontend
+NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
 Frontend
@@ -331,7 +347,15 @@ Benefits:
 
 ---
 
-## 6. Response Generation
+## 6. Mock Mode Check
+
+Before calling Gemini, the backend checks whether a valid API key is available.
+
+- If available → Gemini Vision pipeline
+- Otherwise → predefined sample MTO response
+---
+
+## 7. Response Generation
 
 Validated data is returned as:
 
@@ -370,15 +394,18 @@ Invalid responses are rejected before reaching the frontend.
 
 ---
 
-# 🔄 Mock Fallback
+# 🔄 Mock Mode (Graceful Fallback)
 
-If Gemini is unavailable:
+If `GEMINI_API_KEY` is not configured, the backend automatically switches to **Mock Mode**.
 
-- API errors are caught gracefully.
-- Friendly error messages are displayed.
-- The extraction request fails safely instead of returning invalid data.
+In Mock Mode:
 
-> **Note:** The current implementation does not generate fake/mock MTO data. It intentionally avoids fabricated outputs.
+- A predefined sample MTO response is returned.
+- The complete upload → extraction → result → CSV workflow remains functional.
+- The frontend clearly displays a **"Mock Mode"** badge so users know the output is simulated.
+- This allows evaluators to run the application without creating an API key.
+
+If a Gemini API key is provided, the backend automatically uses the live AI extraction pipeline instead.
 
 ---
 
@@ -438,7 +465,8 @@ Confidence
 - Text is readable by Gemini.
 - MTO information is visible.
 - Single drawing per upload.
-- Internet connection is available.
+- When running in Mock Mode, extraction results are simulated and do not reflect the uploaded drawing.
+- The application supports both Live AI mode and Mock Mode.
 
 ---
 
@@ -464,9 +492,24 @@ Confidence
 - Streaming progress updates
 - AI-assisted correction mode
 - Human-in-the-loop review workflow
+- Asynchronous background job processing
+- Confidence visualization overlay on drawing
+- Automatic symbol detection using Computer Vision
 
 ---
+# ⚖ Design Decisions
 
+The backend uses a synchronous extraction endpoint instead of an asynchronous job queue.
+
+Reasons:
+
+- Simpler architecture
+- Easier local setup
+- Suitable for processing one drawing at a time
+- Lower implementation complexity for the scope of this assessment
+
+With more time, an asynchronous queue (Celery/RQ) could improve scalability for large batch uploads.
+---
 # 📜 License
 
 This project was developed for technical assessment and educational purposes.
