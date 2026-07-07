@@ -33,12 +33,16 @@ def extraction_to_csv(extraction: ExtractionResponse) -> str:
     # MTO Table
     writer.writerow(
         [
-            "Item Code",
+            "Category",
             "Description",
-            "Size",
-            "Schedule",
+            "Size (NPS)",
+            "Schedule/Rating",
+            "Material Spec",
+            "End Type",
             "Quantity",
             "Unit",
+            "Length (m)",
+            "Remarks",
             "Confidence",
         ]
     )
@@ -46,12 +50,16 @@ def extraction_to_csv(extraction: ExtractionResponse) -> str:
     for item in extraction.items:
         writer.writerow(
             [
-                item.item_code,
+                item.category,
                 item.description,
-                item.size,
-                item.schedule,
+                item.size_nps,
+                item.schedule_rating,
+                item.material_spec,
+                item.end_type,
                 item.quantity,
                 item.unit,
+                item.length_m if item.length_m is not None else "",
+                item.remarks,
                 f"{item.confidence:.2%}",
             ]
         )

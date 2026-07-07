@@ -23,6 +23,10 @@ export function ExtractionResultCard({ result }: ExtractionResultCardProps) {
       <div className="grid gap-4 px-6 py-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetadataItem label="Drawing Number" value={result.metadata.drawing_number} />
         <MetadataItem label="Line Number" value={result.metadata.line_number} />
+        <MetadataItem label="Revision" value={result.metadata.revision} />
+        <MetadataItem label="Material Class" value={result.metadata.material_class} />
+        <MetadataItem label="NPS" value={result.metadata.nps} />
+        <MetadataItem label="Service" value={result.metadata.service} />
         <MetadataItem label="Model" value={result.metadata.model} />
         <MetadataItem label="Items Found" value={String(result.items.length)} />
       </div>
@@ -45,10 +49,12 @@ export function ExtractionResultCard({ result }: ExtractionResultCardProps) {
     <table className="min-w-full text-left text-sm">
       <thead>
         <tr className="border-b border-zinc-100 text-xs uppercase tracking-wide text-zinc-500">
-          <th className="px-3 py-2 font-medium">Item Code</th>
+          <th className="px-3 py-2 font-medium">Category</th>
           <th className="px-3 py-2 font-medium">Description</th>
-          <th className="px-3 py-2 font-medium">Size</th>
-          <th className="px-3 py-2 font-medium">Schedule</th>
+          <th className="px-3 py-2 font-medium">Size (NPS)</th>
+          <th className="px-3 py-2 font-medium">Schedule/Rating</th>
+          <th className="px-3 py-2 font-medium">Material Spec</th>
+          <th className="px-3 py-2 font-medium">End Type</th>
           <th className="px-3 py-2 font-medium">Qty</th>
           <th className="px-3 py-2 font-medium">Unit</th>
           <th className="px-3 py-2 font-medium">Confidence</th>
@@ -56,24 +62,30 @@ export function ExtractionResultCard({ result }: ExtractionResultCardProps) {
       </thead>
 
       <tbody>
-        {result.items.map((item) => (
+        {result.items.map((item, index) => (
           <tr
-            key={item.item_code}
+            key={`${item.category}-${item.description}-${index}`}
             className="border-b border-zinc-50 last:border-0"
           >
             <td className="px-3 py-3 font-medium text-zinc-900">
-              {item.item_code}
+              {item.category}
             </td>
 
             <td className="px-3 py-3 text-zinc-700">
               {item.description}
             </td>
 
-            <td className="px-3 py-3 text-zinc-700">{item.size}</td>
+            <td className="px-3 py-3 text-zinc-700">{item.size_nps}</td>
 
             <td className="px-3 py-3 text-zinc-700">
-              {item.schedule}
+              {item.schedule_rating}
             </td>
+
+            <td className="px-3 py-3 text-zinc-700">
+              {item.material_spec}
+            </td>
+
+            <td className="px-3 py-3 text-zinc-700">{item.end_type}</td>
 
             <td className="px-3 py-3 text-zinc-700">
               {item.quantity}

@@ -1,11 +1,15 @@
 /** Matches backend `MtoLineItem` schema. */
 export interface MtoLineItem {
-  item_code: string;
+  category: string;
   description: string;
-  size: string;
-  schedule: string;
+  size_nps: string;
+  schedule_rating: string;
+  material_spec: string;
+  end_type: string;
   quantity: number;
   unit: string;
+  length_m: number | null;
+  remarks: string;
   confidence: number;
 }
 
@@ -13,6 +17,10 @@ export interface MtoLineItem {
 export interface ExtractionMetadata {
   drawing_number: string;
   line_number: string;
+  revision: string;
+  material_class: string;
+  nps: string;
+  service: string;
   extracted_at: string;
   model: string;
 }
