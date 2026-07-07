@@ -36,6 +36,7 @@ class Settings(BaseModel):
 
     # Gemini Vision — when empty, /extract falls back to mock data
     gemini_api_key: str = ""
+    poppler_path: str = ""
 
 
 @lru_cache
@@ -47,4 +48,5 @@ def get_settings() -> Settings:
         debug=os.getenv("DEBUG", "false").lower() in {"1", "true", "yes"},
         cors_origins=_parse_cors_origins(os.getenv("CORS_ORIGINS")),
         gemini_api_key=os.getenv("GEMINI_API_KEY", ""),
+        poppler_path=os.getenv("POPPLER_PATH", ""),
     )
