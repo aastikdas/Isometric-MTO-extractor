@@ -10,8 +10,8 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
-import google.generativeai as genai
-from google.generativeai.types import GenerationConfig
+from google import genai
+from google.genai import types
 from PIL import Image
 from pydantic import BaseModel, Field, ValidationError
 
@@ -22,20 +22,31 @@ logger = logging.getLogger(__name__)
 GEMINI_MODEL = "gemini-2.5-flash"
 
 EXTRACTION_PROMPT = """
-You are an expert piping engineer analyzing an isometric piping drawing.
+You are an expert piping engineer.
 
-Extract a material take-off (MTO) bill of materials from the drawing image(s).
-Identify every distinct piping component visible in the material list or BOM table,
-including pipes, fittings, flanges, valves, gaskets, bolts, supports, and instruments.
+Extract the material take-off (MTO) from the drawing.
 
-Return ONLY valid JSON matching the required schema with these fields:
-- drawing_number: the drawing number shown on the title block
-- line_number: the primary piping line identifier
-- items: array of line items, each with item_code, description, size, schedule,
-  quantity, unit, and confidence (0.0 to 1.0)
+Return ONLY valid JSON.
 
-Use engineering-standard units (m, ft, ea, kg, etc.).
-If a value is not visible, infer a reasonable placeholder and lower the confidence score.
+Extract a maximum of 20 line items.
+
+JSON format:
+
+{
+  "drawing_number": "...",
+  "line_number": "...",
+  "items": [
+    {
+      "item_code": "...",
+      "description": "...",
+      "size": "...",
+      "schedule": "...",
+      "quantity": 0,
+      "unit": "...",
+      "confidence": 0.95
+    }
+  ]
+}
 """.strip()
 
 
@@ -77,37 +88,42 @@ class GeminiService:
         if not images:
             raise ValueError("At least one drawing image is required for extraction.")
 
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel(GEMINI_MODEL)
+        client = genai.Client(api_key=api_key)
 
         contents: list[object] = [EXTRACTION_PROMPT, *images]
 
         try:
-            response = model.generate_content(
-                contents,
-                generation_config=GenerationConfig(
+            print("Calling Gemini...")
+            response = client.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=contents,
+                config=types.GenerateContentConfig(
                     temperature=0.1,
                     response_mime_type="application/json",
                     response_schema=GeminiMtoPayload,
                 ),
             )
+            print("Gemini returned a response")
+            print(response.text.count('"item_code"'))
         except Exception as exc:
-            logger.exception("Gemini API request failed for file %s", filename)
-            raise RuntimeError("Gemini extraction request failed.") from exc
+            import traceback
 
+            traceback.print_exc()
+            print("=" * 80)
+            print("ACTUAL GEMINI ERROR:")
+            print(type(exc))
+            print(exc)
+            print("=" * 80)
+
+            raise
         if not response.text:
             raise RuntimeError("Gemini returned an empty response.")
 
-        try:
-            payload = GeminiMtoPayload.model_validate_json(response.text)
-        except ValidationError as exc:
-            logger.exception(
-                "Gemini JSON failed schema validation for file %s: %s",
-                filename,
-                response.text,
-            )
-            raise ValueError("Gemini response did not match the expected MTO schema.") from exc
+        if response.parsed is None:
+            logger.error("Raw Gemini response: %s", response.text)
+            raise RuntimeError("Gemini did not return valid structured JSON.")
 
+        payload = response.parsed
         # Re-validate line items individually through the canonical API schema.
         validated_items = [MtoLineItem.model_validate(item.model_dump()) for item in payload.items]
 

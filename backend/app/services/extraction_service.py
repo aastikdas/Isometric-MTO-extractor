@@ -140,7 +140,12 @@ class ExtractionService:
 
         if ExtractionService._is_pdf(filename, resolved_type):
             try:
-                images = convert_from_bytes(content, dpi=200, fmt="png")
+                images = convert_from_bytes(
+    content,
+    dpi=200,
+    fmt="png",
+    poppler_path=r"C:\Users\aashu\Downloads\Release-26.02.0-0\poppler-26.02.0\Library\bin",
+)
             except Exception as exc:
                 logger.exception("Failed to convert PDF to images for file %s", filename)
                 raise ValueError("Unable to convert PDF to images.") from exc
