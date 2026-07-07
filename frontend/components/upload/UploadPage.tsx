@@ -189,7 +189,7 @@ setUploadProgress(0);
           </aside>
         </div>
 
-        {result && <ExtractionResultCard result={result} />}
+        {result && <ExtractionResultCard result={result} file={selectedFile} />}
 
         <footer className="text-center text-xs text-zinc-400 sm:text-left">
           Backend: {API_BASE_URL}
