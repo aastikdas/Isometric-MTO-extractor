@@ -10,8 +10,8 @@ import { ExtractApiError, extractMto, NetworkError } from "@/lib/api/extract";
 import { API_BASE_URL } from "@/lib/constants";
 import type { ExtractionResponse } from "@/lib/types/extraction";
 const LOADING_STEPS = [
-  "Uploading PDF...",
-  "Converting PDF...",
+  "Uploading ...",
+  "Converting ...",
   "Analyzing Drawing...",
   "Extracting MTO...",
   "Generating Result...",
@@ -75,7 +75,7 @@ setUploadProgress(0);
       setLoadingStep((prev) =>
         prev < LOADING_STEPS.length - 1 ? prev + 1 : prev
       );
-    }, 1800);
+    }, 2800);
   
     return () => clearInterval(interval);
   }, [isUploading]);

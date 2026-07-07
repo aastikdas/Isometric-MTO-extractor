@@ -177,7 +177,6 @@ from app.schemas.extraction import ExtractionMetadata, ExtractionResponse, MtoLi
 logger = logging.getLogger(__name__)
 
 GEMINI_MODEL = "gemini-2.5-flash"
-
 EXTRACTION_PROMPT = """
 You are a senior piping engineer with expertise in interpreting industrial piping isometric drawings.
 
@@ -188,8 +187,12 @@ Instructions:
 1. Read ONLY information visible in the drawing.
 2. Do NOT invent components.
 3. If a value is missing, return "N/A".
-4. Extract every material item visible.
+4. Extract material items exactly as shown.
 5. Confidence must be between 0.0 and 1.0.
+6. IMPORTANT: Return AT MOST 20 material items, even if the drawing contains more.
+7. If more than 20 items are present, return ONLY the first 20 items that appear in reading order (top-to-bottom, left-to-right).
+8. Do NOT summarize omitted items.
+9. Keep descriptions concise and avoid unnecessary text.
 
 For every item return:
 
@@ -208,7 +211,6 @@ Also extract:
 
 Return ONLY valid JSON matching the schema.
 """.strip()
-
 
 class GeminiMtoPayload(BaseModel):
     """Intermediate schema used for Gemini structured JSON output."""
@@ -267,7 +269,8 @@ class GeminiService:
             raise ValueError("At least one drawing image is required for extraction.")
 
         client = genai.Client(api_key=api_key)
-
+        # for img in images:
+        #     img.thumbnail((2500, 2500))
         contents: list[object] = [EXTRACTION_PROMPT, *images]
 
         try:
@@ -279,17 +282,14 @@ class GeminiService:
                     temperature=0.1,
                     response_mime_type="application/json",
                     response_schema=GeminiMtoPayload,
-                    # Gemini 2.5 Flash spends part of its output-token budget on
-                    # internal "thinking" before writing the JSON answer. Without
-                    # an explicit cap that thinking can eat the whole default
-                    # budget and truncate the JSON mid-stream, which is exactly
-                    # what was causing the JSON parse failures. Keep thinking
-                    # small/bounded and give plenty of room for the real output
-                    # (a drawing can have many line items).
-                    thinking_config=types.ThinkingConfig(thinking_budget=512),
-                    max_output_tokens=65536,
+                    thinking_config=types.ThinkingConfig(thinking_budget=0),
+                    max_output_tokens=65535,
                 ),
             )
+            print(response.usage_metadata)
+
+            if response.candidates:
+                print("Finish reason:", response.candidates[0].finish_reason)
             logger.info("Gemini returned a response")
         except Exception as exc:
             logger.exception("Gemini request failed.")
