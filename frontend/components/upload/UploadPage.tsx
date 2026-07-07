@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { ExtractionResultCard } from "@/components/results/ExtractionResultCard";
 import { Spinner } from "@/components/ui/Spinner";
@@ -9,7 +9,13 @@ import { FilePreview } from "@/components/upload/FilePreview";
 import { ExtractApiError, extractMto, NetworkError } from "@/lib/api/extract";
 import { API_BASE_URL } from "@/lib/constants";
 import type { ExtractionResponse } from "@/lib/types/extraction";
-
+const LOADING_STEPS = [
+  "Uploading PDF...",
+  "Converting PDF...",
+  "Analyzing Drawing...",
+  "Extracting MTO...",
+  "Generating Result...",
+];
 export function UploadPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -35,7 +41,8 @@ export function UploadPage() {
     }
 
     setIsUploading(true);
-    setUploadProgress(0);
+setLoadingStep(0);
+setUploadProgress(0);
     setError(null);
     setResult(null);
 
@@ -55,9 +62,24 @@ export function UploadPage() {
       }
     } finally {
       setIsUploading(false);
+      setLoadingStep(0);
     }
   };
-
+  
+  const [loadingStep, setLoadingStep] = useState(0);
+  
+  useEffect(() => {
+    if (!isUploading) return;
+  
+    const interval = setInterval(() => {
+      setLoadingStep((prev) =>
+        prev < LOADING_STEPS.length - 1 ? prev + 1 : prev
+      );
+    }, 1800);
+  
+    return () => clearInterval(interval);
+  }, [isUploading]);
+  
   return (
     <div className="min-h-full bg-gradient-to-b from-zinc-50 to-zinc-100">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
@@ -103,7 +125,7 @@ export function UploadPage() {
                   {isUploading ? (
                     <>
                       <Spinner className="h-4 w-4" label="Extracting" />
-                      Extracting...
+                      {LOADING_STEPS[loadingStep]}
                     </>
                   ) : (
                     "Extract MTO"
@@ -112,19 +134,44 @@ export function UploadPage() {
               </div>
 
               {isUploading && (
-                <div className="mt-5">
-                  <div className="mb-2 flex items-center justify-between text-sm">
-                    <span className="font-medium text-zinc-700">Upload progress</span>
-                    <span className="text-zinc-500">{uploadProgress}%</span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-zinc-100">
-                    <div
-                      className="h-full rounded-full bg-blue-600 transition-all duration-300"
-                      style={{ width: `${uploadProgress}%` }}
-                    />
-                  </div>
-                </div>
-              )}
+  <div className="mt-6 rounded-xl border border-blue-100 bg-blue-50 p-5">
+
+    <div className="mb-4 flex items-center gap-3">
+      <Spinner className="h-5 w-5" />
+
+      <div>
+        <p className="font-semibold text-blue-900">
+          {LOADING_STEPS[loadingStep]}
+        </p>
+
+        <p className="text-sm text-blue-700">
+          AI is processing your drawing...
+        </p>
+      </div>
+    </div>
+
+    <div className="mb-2 flex justify-between text-sm">
+      <span>{uploadProgress}%</span>
+
+      <span>
+        Step {loadingStep + 1} / {LOADING_STEPS.length}
+      </span>
+    </div>
+
+    <div className="h-2 overflow-hidden rounded-full bg-blue-100">
+      <div
+        className="h-full rounded-full bg-blue-600 transition-all duration-500"
+        style={{
+          width: `${Math.max(
+            uploadProgress,
+            ((loadingStep + 1) / LOADING_STEPS.length) * 100
+          )}%`,
+        }}
+      />
+    </div>
+
+  </div>
+)}
             </div>
 
             {error && (

@@ -10,20 +10,27 @@ from app.schemas.extraction import ExtractionResponse
 
 def extraction_to_csv(extraction: ExtractionResponse) -> str:
     """
-    Convert an extraction response into a downloadable CSV string.
-
-    Includes drawing metadata followed by MTO line items.
+    Convert an extraction response into an industry-style CSV report.
     """
+
     output = io.StringIO()
     writer = csv.writer(output)
 
-    writer.writerow(["Filename", extraction.filename])
+    # Report Header
     writer.writerow(["Drawing Number", extraction.metadata.drawing_number])
     writer.writerow(["Line Number", extraction.metadata.line_number])
+    writer.writerow(
+        [
+            "Generated At",
+            extraction.metadata.extracted_at.strftime("%Y-%m-%d %H:%M:%S"),
+        ]
+    )
     writer.writerow(["Model", extraction.metadata.model])
-    writer.writerow(["Extracted At", extraction.metadata.extracted_at.isoformat()])
+    writer.writerow(["Source File", extraction.filename])
+
     writer.writerow([])
 
+    # MTO Table
     writer.writerow(
         [
             "Item Code",
@@ -45,14 +52,11 @@ def extraction_to_csv(extraction: ExtractionResponse) -> str:
                 item.schedule,
                 item.quantity,
                 item.unit,
-                item.confidence,
+                f"{item.confidence:.2%}",
             ]
         )
 
-    # UTF-8 BOM helps Excel open the file with correct encoding.
-    return f"\ufeff{output.getvalue()}"
-
-
+    return "\ufeff" + output.getvalue()
 def build_csv_filename(extraction: ExtractionResponse) -> str:
     """Build a safe download filename from the extraction response."""
     stem = extraction.filename.rsplit(".", 1)[0] if "." in extraction.filename else extraction.filename

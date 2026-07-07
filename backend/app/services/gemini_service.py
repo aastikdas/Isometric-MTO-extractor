@@ -8,6 +8,7 @@ payload against the existing Pydantic extraction schemas.
 from __future__ import annotations
 
 import logging
+import json
 from datetime import datetime, timezone
 
 from google import genai
@@ -22,31 +23,34 @@ logger = logging.getLogger(__name__)
 GEMINI_MODEL = "gemini-2.5-flash"
 
 EXTRACTION_PROMPT = """
-You are an expert piping engineer.
+You are a senior piping engineer with expertise in interpreting industrial piping isometric drawings.
 
-Extract the material take-off (MTO) from the drawing.
+Your task is to extract the Material Take-Off (MTO) from the uploaded drawing.
 
-Return ONLY valid JSON.
+Instructions:
 
-Extract a maximum of 20 line items.
+1. Read ONLY information visible in the drawing.
+2. Do NOT invent components.
+3. If a value is missing, return "N/A".
+4. Extract every material item visible.
+5. Confidence must be between 0.0 and 1.0.
 
-JSON format:
+For every item return:
 
-{
-  "drawing_number": "...",
-  "line_number": "...",
-  "items": [
-    {
-      "item_code": "...",
-      "description": "...",
-      "size": "...",
-      "schedule": "...",
-      "quantity": 0,
-      "unit": "...",
-      "confidence": 0.95
-    }
-  ]
-}
+- item_code
+- description
+- size
+- schedule
+- quantity
+- unit
+- confidence
+
+Also extract:
+
+- drawing_number
+- line_number
+
+Return ONLY valid JSON matching the schema.
 """.strip()
 
 
@@ -106,24 +110,24 @@ class GeminiService:
             print("Gemini returned a response")
             print(response.text.count('"item_code"'))
         except Exception as exc:
-            import traceback
-
-            traceback.print_exc()
-            print("=" * 80)
-            print("ACTUAL GEMINI ERROR:")
-            print(type(exc))
-            print(exc)
-            print("=" * 80)
-
-            raise
+            logger.exception("Gemini request failed.")
+            raise RuntimeError("Gemini request failed.") from exc
         if not response.text:
             raise RuntimeError("Gemini returned an empty response.")
 
-        if response.parsed is None:
-            logger.error("Raw Gemini response: %s", response.text)
-            raise RuntimeError("Gemini did not return valid structured JSON.")
+        try:
+            payload_dict = json.loads(response.text)
+            payload = GeminiMtoPayload.model_validate(payload_dict)
 
-        payload = response.parsed
+        except json.JSONDecodeError as exc:
+            logger.exception("Gemini returned invalid JSON.")
+            raise RuntimeError("Gemini returned invalid JSON.") from exc
+
+        except ValidationError as exc:
+            logger.exception("Gemini returned JSON that does not match the schema.")
+            logger.error("Raw Gemini response:\n%s", response.text)
+            raise RuntimeError("Gemini returned invalid structured JSON.") from exc
+        
         # Re-validate line items individually through the canonical API schema.
         validated_items = [MtoLineItem.model_validate(item.model_dump()) for item in payload.items]
 
